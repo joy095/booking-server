@@ -1,20 +1,53 @@
 // src/auth.ts
 import { betterAuth } from "better-auth";
-import { Pool } from "pg";
 import { emailOTP, phoneNumber, username } from "better-auth/plugins";
 import { sendEmail } from "./email";
 import { welcomeTemplate } from "../templates/welcome.html";
 import { otpTemplate } from "../templates/otp.html";
 import { resetPasswordTemplate } from "../templates/reset-password.html";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { db } from "../db";
+import { account, session, user, verification } from "../db/schema/auth-schema";
 
 export const auth = betterAuth({
   baseUrl: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
   basePath: "/api/auth",
-  trustedOrigins: ["http://localhost:3000", "http://localhost:5173"],
+  trustedOrigins: ["http://localhost:3000", process.env.CLIENT_URL as string],
 
-  database: new Pool({
-    connectionString: process.env.DATABASE_URL,
+  database: drizzleAdapter(db, {
+    provider: "pg", // or "pg" or "mysql"
+    schema: {
+      user,
+      session,
+      account,
+      verification,
+    },
   }),
+
+  rateLimit: {
+    window: 60, // time window in seconds
+    max: 30, // max requests in the window
+    customRules: {
+      "/sign-in/email": {
+        window: 10,
+        max: 3,
+      },
+      "/email-otp/verify-email/*": async (request) => {
+        // custom function to return rate limit window and max
+        return {
+          window: 10,
+          max: 5,
+        };
+      },
+      "/request-password-reset/*": async (request) => {
+        // custom function to return rate limit window and max
+        return {
+          window: 30,
+          max: 3,
+        };
+      },
+    },
+  },
 
   emailAndPassword: {
     enabled: true,

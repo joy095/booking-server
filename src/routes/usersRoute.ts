@@ -1,7 +1,4 @@
-import { Context, Hono } from "hono";
-import { db } from "../db";
-// import { users } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { Context } from "hono";
 import { auth } from "../utils/auth";
 
 export async function usersRoute(c: Context) {
